@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="./webRecord.js"></script>
+    <script>
+      // xhr
+      var xhr = new XMLHttpRequest()
+      xhr.open('get', '.', true)
+      xhr.setRequestHeader('k', 'v')
+      xhr.onreadystatechange = (e) => {
+        console.info(xhr.responseText)
+      }
+      xhr.send()
+
+      fetch('.').then(async (res) => {
+        console.info(await res.text())
+      })
+
+      setTimeout(() => {
+        console.info(records)
+      }, 1000)
+    </script>
+  </head>
+  <body></body>
+</html>
