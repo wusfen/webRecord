@@ -12,16 +12,24 @@
       xhr.open('get', '.', true)
       xhr.setRequestHeader('k', 'v')
       xhr.onreadystatechange = (e) => {
-        console.info(xhr.responseText)
+        if (xhr.readyState != 4) return
+        // console.info(
+        //   'onreadystatechange',
+        //   e,
+        //   String(xhr.responseText).substr(0, 10)
+        // )
+      }
+      xhr.onload = (e) => {
+        console.info('onload', e, String(xhr.responseText).substr(0, 10))
       }
       xhr.send()
 
-      fetch('.').then(async (res) => {
-        console.info(await res.text())
-      })
+      // fetch('.').then(async (res) => {
+      //   // console.info(await res.text())
+      // })
 
       setTimeout(() => {
-        console.info(records)
+        // console.info(records)
       }, 1000)
     </script>
   </head>

@@ -43,76 +43,91 @@ addEventListener('error', function (e) {
 }, true)
 
 // xhr
-function interceptXHR(requestCb) {
+function interceptXHR(handler) {
   var __XMLHttpRequest = window.XMLHttpRequest
-  var __open = __XMLHttpRequest.prototype.open
-  var __setRequestHeader = __XMLHttpRequest.prototype.setRequestHeader
-  var __send = __XMLHttpRequest.prototype.send
-  window.XMLHttpRequest = function() {
-    this.__xhr = new __XMLHttpRequest
-  }
+  var __prototype = __XMLHttpRequest.prototype
+  var __open = __prototype.open
+  var __setRequestHeader = __prototype.setRequestHeader
+  var __send = __prototype.send
 
-  XMLHttpRequest.prototype.open = function (method, url) {
-    var __xhr = this.__xhr
+  __prototype.open = function (method, url) {
     var xhr = this
+
     var requestInfo = {
-      type: 'xhr:request',
       xhr,
       method,
       url,
       headers: {},
     }
 
-    xhr.setRequestHeader = function (k, v) {
+    __prototype.setRequestHeader = function (k, v) {
       requestInfo.headers[k] = v
-      return __setRequestHeader.apply(__xhr, arguments)
+      return __setRequestHeader.apply(this, arguments)
     }
 
-    xhr.send = function(e) {
-      var onreadystatechange = xhr.onreadystatechange
+    __prototype.send = function(data) {
+      requestInfo.data = data
+      var callback = handler(requestInfo)
 
-      var responseCb = requestCb(requestInfo)
+      if (callback !== undefined) {
 
-      if (typeof responseCb != 'function') {
-        xhr.responseText = responseCb
-        xhr.response = responseCb
+        // handler return _res
+        if (typeof callback != 'function') {
+          var _res = callback
+          Object.defineProperty(xhr, 'responseText', {value:_res})
+          Object.defineProperty(xhr, 'response', {value:_res})
+          Object.defineProperty(xhr, 'readyState', {value:4})
 
-        xhr.readyState = 4
-        onreadystatechange.apply(xhr, new Event('readystatechange'))
-        return
-      }
+          xhr.dispatchEvent(new Event('readystatechange'))
+          xhr.dispatchEvent(new Event('load'))
+          xhr.dispatchEvent(new Event('loadend'))
+          return
+        }
 
-      __xhr.onreadystatechange = function(e) {
+        var onreadystatechange_ = xhr.onreadystatechange
+        xhr.onreadystatechange = function(e) {
 
-        if (__xhr.readyState == 4) {
-          var _res = responseCb({
-            type: 'xhr:response',
-            xhr,
-            method,
-            url,
-            headers: __xhr.getAllResponseHeaders(),
-            response: (function() {
-              try {
-                return __xhr.response
-              } catch (_) {}
-              return __xhr.responseText
-            })(),
-          })
+          if (xhr.readyState == 4) {
+            var _res = callback({
+              headers: xhr.getAllResponseHeaders(),
+              response: (function() {
+                try {
+                  return xhr.response
+                } catch (_) {}
+                return xhr.responseText
+              })(),
+            })
 
-          if (_res) {
-            xhr.responseText = _res
-            xhr.response = _res
+            if (_res) {
+              Object.defineProperty(xhr, 'responseText', {value:_res})
+              Object.defineProperty(xhr, 'response', {value:_res})
+            }
+          }
+
+          if (onreadystatechange_) {
+            return onreadystatechange_.apply(xhr, arguments)
           }
         }
 
-        return onreadystatechange.apply(xhr, arguments)
       }
 
-      return __send.apply(__xhr, arguments)
+      return __send.apply(this, arguments)
     }
 
-    return __open.apply(__xhr, arguments)
+    return __open.apply(this, arguments)
   }
+
+  // TODO multi
+  __prototype.setRequestHeader = function (k, v) {
+    
+    return __setRequestHeader.apply(this, arguments)
+  }
+
+  __prototype.send = function (data) {
+
+    return __send.apply(this, arguments)
+  }
+
 }
 
 // fetch
@@ -123,9 +138,8 @@ function interceptFetch(requestCb) {
   window.fetch = function(url, requestInit) {
     requestInit = requestInit || {}
     var requestInfo = {
-      url,
-      type: 'fetch:request',
       method: requestInit.method || 'get',
+      url,
       headers: requestInit.headers || {},
     }
     var responseCb = requestCb(requestInfo)
@@ -146,7 +160,6 @@ function interceptFetch(requestCb) {
       var promise = __fetch.apply(this, arguments)
 
       var responseInfo = {
-        type: 'fetch:response',
         method: requestInfo.method,
         url: requestInfo.url,
         headers: {},
@@ -192,36 +205,17 @@ function interceptFetch(requestCb) {
 // xhr + fetch
 function interceptAjax(requestCb) {
   interceptXHR(requestCb)
-  interceptFetch(requestCb)
+  // interceptFetch(requestCb)
 }
 
-interceptAjax(function(info) {
-  var id = Math.random()
-
-  records.push({
-    id,
-    type: info.type,
-    method: info.method,
-    url: info.url,
-    headers: info.headers,
-  })
-
-  return 'info.response'
-
-  return function(info) {
-    records.push({
-      id,
-      type: info.type,
-      method: info.method,
-      url: info.url,
-      response: info.response,
-    })
-
-    return 'info.response'
-  }
-})
-
 // TODO multi
-// interceptAjax(function (info) {
-//   console.table(info)
-// })
+interceptAjax(function(info) {
+  console.log(info)
+})
+interceptAjax(function (info) {
+  console.log(2)
+})
+interceptAjax(function (info) {
+  console.log(3)
+  return 'yes'
+})
