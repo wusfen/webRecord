@@ -44,15 +44,15 @@ addEventListener('error', function (e) {
 }, true)
 
 // ajax
-interceptAjax(function(requestInfo) {
-  return function (responseInfo) {
-    records.push({
-      type: 'ajax',
-      requestInfo,
-      responseInfo,
-    })
-  }
-})
+// interceptAjax(function(requestInfo) {
+//   return function (responseInfo) {
+//     records.push({
+//       type: 'ajax',
+//       requestInfo,
+//       responseInfo,
+//     })
+//   }
+// })
 
 // xhr
 // interceptXHR(requestInfo=>_res) // will not send
@@ -129,9 +129,11 @@ function interceptXHR(handler) {
       xhr.dispatchEvent(new Event('readystatechange'))
       xhr.dispatchEvent(new Event('load'))
       xhr.dispatchEvent(new Event('loadend'))
-      return
     }
 
+    if (xhr.response && /\[native code\]/.test(__send)) {
+      return
+    }
     return __send.apply(this, [requestInfo.data])
   }
 
@@ -214,3 +216,27 @@ function interceptAjax(requestCb) {
   interceptXHR(requestCb)
   // interceptFetch(requestCb)
 }
+
+interceptAjax(function(info) {
+  console.log(1, info)
+
+  info.data = 222
+  
+  // return 'one'
+  return function (responseInfo) {
+    console.log(responseInfo)
+    return 'one'
+  }
+})
+interceptAjax(function (info) {
+  console.log(2, info)
+  return 'two'
+})
+interceptAjax(function (info) {
+  console.log(3, info)
+  // return 'three'
+  return function (responseInfo) {
+    console.log(responseInfo)
+    // return 'Three'
+  }
+})
