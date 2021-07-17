@@ -39,8 +39,20 @@ addEventListener('load', function(e) {
 addEventListener('error', function (e) {
   records.push({
     type: e.type,
+    e,
   })
 }, true)
+
+// ajax
+interceptAjax(function(requestInfo) {
+  return function (responseInfo) {
+    records.push({
+      type: 'ajax',
+      requestInfo,
+      responseInfo,
+    })
+  }
+})
 
 // xhr
 // interceptXHR(requestInfo=>_res) // will not send
@@ -202,22 +214,3 @@ function interceptAjax(requestCb) {
   interceptXHR(requestCb)
   // interceptFetch(requestCb)
 }
-
-interceptAjax(function(info) {
-  console.log(1, info)
-
-  info.data = 222
-  
-  // return 'one'
-})
-interceptAjax(function (info) {
-  console.log(2, info)
-  return 'two'
-})
-interceptAjax(function (info) {
-  console.log(3, info)
-  // return 'three'
-  return function () {
-    return 'Three'
-  }
-})
