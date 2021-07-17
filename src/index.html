@@ -9,7 +9,7 @@
     <script>
       // xhr
       var xhr = new XMLHttpRequest()
-      xhr.open('get', '.', true)
+      xhr.open('post', '.', true)
       xhr.setRequestHeader('k', 'v')
       xhr.onreadystatechange = (e) => {
         if (xhr.readyState != 4) return

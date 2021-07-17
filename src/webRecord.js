@@ -43,89 +43,84 @@ addEventListener('error', function (e) {
 }, true)
 
 // xhr
+// interceptXHR(requestInfo=>_res) // will not send
+// interceptXHR(requestInfo=> responseInfo=>_res) // will send
 function interceptXHR(handler) {
   var __XMLHttpRequest = window.XMLHttpRequest
   var __prototype = __XMLHttpRequest.prototype
   var __open = __prototype.open
   var __setRequestHeader = __prototype.setRequestHeader
   var __send = __prototype.send
+  var requestInfoKey = '_requestInfo:'+Math.random().toString(36).slice(2)
 
   __prototype.open = function (method, url) {
-    var xhr = this
-
-    var requestInfo = {
+    this[requestInfoKey] = {
       xhr,
       method,
       url,
       headers: {},
     }
 
-    __prototype.setRequestHeader = function (k, v) {
-      requestInfo.headers[k] = v
-      return __setRequestHeader.apply(this, arguments)
-    }
-
-    __prototype.send = function(data) {
-      requestInfo.data = data
-      var callback = handler(requestInfo)
-
-      if (callback !== undefined) {
-
-        // handler return _res
-        if (typeof callback != 'function') {
-          var _res = callback
-          Object.defineProperty(xhr, 'responseText', {value:_res})
-          Object.defineProperty(xhr, 'response', {value:_res})
-          Object.defineProperty(xhr, 'readyState', {value:4})
-
-          xhr.dispatchEvent(new Event('readystatechange'))
-          xhr.dispatchEvent(new Event('load'))
-          xhr.dispatchEvent(new Event('loadend'))
-          return
-        }
-
-        var onreadystatechange_ = xhr.onreadystatechange
-        xhr.onreadystatechange = function(e) {
-
-          if (xhr.readyState == 4) {
-            var _res = callback({
-              headers: xhr.getAllResponseHeaders(),
-              response: (function() {
-                try {
-                  return xhr.response
-                } catch (_) {}
-                return xhr.responseText
-              })(),
-            })
-
-            if (_res) {
-              Object.defineProperty(xhr, 'responseText', {value:_res})
-              Object.defineProperty(xhr, 'response', {value:_res})
-            }
-          }
-
-          if (onreadystatechange_) {
-            return onreadystatechange_.apply(xhr, arguments)
-          }
-        }
-
-      }
-
-      return __send.apply(this, arguments)
-    }
-
     return __open.apply(this, arguments)
   }
 
-  // TODO multi
   __prototype.setRequestHeader = function (k, v) {
-    
+    var requestInfo = this[requestInfoKey] || {}
+
+    requestInfo.headers[k] = v
+
     return __setRequestHeader.apply(this, arguments)
   }
 
-  __prototype.send = function (data) {
+  __prototype.send = function(data) {
+    var requestInfo = this[requestInfoKey] || {}
+    var xhr = this
 
-    return __send.apply(this, arguments)
+    requestInfo.data = data
+    var callback = handler(requestInfo)
+
+    // interceptXHR(requestInfo=> responseInfo=>_res)
+    if (typeof callback == 'function') {
+      var onreadystatechange_ = xhr.onreadystatechange
+      xhr.onreadystatechange = function(e) {
+
+        if (xhr.readyState == 4) {
+          var _res = callback({
+            headers: xhr.getAllResponseHeaders(),
+            response: (function() {
+              try {
+                return xhr.response
+              } catch (_) {}
+              return xhr.responseText
+            })(),
+          })
+
+          if (_res) {
+            Object.defineProperty(xhr, 'responseText', {value:_res, configurable: true})
+            Object.defineProperty(xhr, 'response', {value:_res, configurable: true})
+          }
+        }
+
+        if (onreadystatechange_) {
+          return onreadystatechange_.apply(xhr, arguments)
+        }
+      }
+    }
+
+    // interceptXHR(requestInfo=>_res)
+    if (callback !== undefined && typeof callback != 'function') {
+      var _res = callback
+      Object.defineProperty(xhr, 'readyState', {value:4, configurable: true})
+      Object.defineProperty(xhr, 'responseText', {value:_res, configurable: true})
+      Object.defineProperty(xhr, 'response', {value:_res, configurable: true})
+
+      xhr.dispatchEvent(new Event('readystatechange'))
+      xhr.dispatchEvent(new Event('load'))
+      xhr.dispatchEvent(new Event('loadend'))
+      return
+    }
+
+    return __send.apply(this, [requestInfo.data])
   }
 
 }
@@ -208,14 +203,21 @@ function interceptAjax(requestCb) {
   // interceptFetch(requestCb)
 }
 
-// TODO multi
 interceptAjax(function(info) {
-  console.log(info)
+  console.log(1, info)
+
+  info.data = 222
+  
+  // return 'one'
 })
 interceptAjax(function (info) {
-  console.log(2)
+  console.log(2, info)
+  return 'two'
 })
 interceptAjax(function (info) {
-  console.log(3)
-  return 'yes'
+  console.log(3, info)
+  // return 'three'
+  return function () {
+    return 'Three'
+  }
 })
